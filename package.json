@@ -31,6 +31,7 @@
     "@types/react": "~19.2.4",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -39,7 +40,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "tsx scripts/sim-check.ts"
   },
   "private": true
 }
