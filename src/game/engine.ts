@@ -1,8 +1,6 @@
 // The run engine: owns one sim and turns real elapsed time into fixed sim
 // steps, and keeps the ski-track history the renderer draws. No React and no
 // platform APIs, so the rule checks and the PNG preview drive it too.
-//
-// Ported from the loop half of rungotchu's use-yeti-run.ts.
 
 import type { Bot } from './bots';
 import { EventWatcher, type GameEvent } from './events';

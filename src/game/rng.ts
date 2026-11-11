@@ -1,7 +1,7 @@
 // ============================================
 // Deterministic PRNG — mulberry32 with explicit integer state
 // ============================================
-// Ported from rungotchu. Code under src/game/ may NOT touch Math.random(): the
+// Code under src/game/ may NOT touch Math.random(): the
 // RNG state lives inside the sim state so a run replays identically from its
 // seed. State is a plain 32-bit int — JSON-safe by construction. Every call
 // returns the next state; callers must store it back. Seed minting

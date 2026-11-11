@@ -1,5 +1,4 @@
-// Keyboard controls: turns key presses into game input. Ported from
-// rungotchu's use-yeti-run.ts keyboard handler.
+// Keyboard controls: turns key presses into game input.
 //
 //   ← → / A D    turn one heading per press; held, the sim repeats the turn
 //   ↓ / S        point downhill; held, tuck

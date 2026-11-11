@@ -1,5 +1,4 @@
 // Touch controls: turns one finger's down / move / up into game input.
-// Ported from rungotchu's pointer steering (yeti-run-game.tsx).
 //
 //   Steer  — touch and hold where you want to go, and drag to adjust. The skis
 //            swing toward the finger. Level with or above the skier means stop

@@ -1,9 +1,8 @@
 // Yeti Run pixel art — the slope, its furniture, the yeti, and the skier.
 // Every sprite is a list of [x, y, w, h, color, opacity?] rects in art pixels;
 // src/game/render.ts records each one into a Skia picture once and stamps it.
-// Ported from rungotchu (the skier is new).
 //
-// The palette is Winter Grit's: navy night, frost-blue light, red/blue for the
+// The palette: navy night, frost-blue light, red/blue for the
 // slalom flags. The snow is lit by a
 // moon at the upper left, so every object shades light on its left and casts
 // a short shadow down-right.

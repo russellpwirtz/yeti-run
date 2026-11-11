@@ -1,5 +1,5 @@
 // ============================================
-// Yeti Run — the pure sim (ported unchanged from rungotchu)
+// Yeti Run — the pure sim
 // ============================================
 // A top-down downhill run in the spirit of the old SkiFree: steer the skier
 // down a moonlit slope through pines, rocks and slalom gates, catch air off

@@ -1,6 +1,5 @@
 // Score pop-ups: "GATE +25", "BACKFLIP +30", "WIPEOUT!" floating up over the
-// skier. Ported from rungotchu's pops (motion.div + AnimatePresence there);
-// here it's a plain list the renderer reads each frame. Time comes in from the
+// skier. A plain list the renderer reads each frame. Time comes in from the
 // game loop, so the checks can drive it.
 
 import type { GameEvent } from './events';

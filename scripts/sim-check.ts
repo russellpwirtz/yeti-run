@@ -2,7 +2,7 @@
 // Yeti Run sim rules — run with: npm test
 // ============================================
 // Plain asserts against the real sim (src/game/sim.ts), in the
-// style of trail-dash-bird-check.ts: loud failures, exit 1 on any violation,
+// style of a plain assert script: loud failures, exit 1 on any violation,
 // no DB.
 //
 // What's asserted:
@@ -10,7 +10,7 @@
 //      pure function of (seed, chunk) whatever order it's generated in
 //   b. the start apron is clear and the skier stands still until steered
 //   c. every run ends: the yeti always catches up, idle or not
-//   d. the skill floor (SKILL_FLOOR, rungotchu's old reward floor) sits above
+//   d. the skill floor (SKILL_FLOOR) sits above
 //      a run you never touch or only point downhill once, and below a plain
 //      steering bot — and steering clearly beats mashing "downhill" through
 //      every tree (the skill is the steering)
@@ -58,7 +58,7 @@ function ok(label: string, cond: boolean, extra = "") {
 
 const MAX_STEPS = Math.round(240 / STEP_S); // 4 minutes — no run should get near
 // A score no skill-less run should reach but any plain steering run clears.
-// Was rungotchu's reward floor (minQualifyingScore); kept as a tuning guard.
+// Kept as a tuning guard.
 const SKILL_FLOOR = 250;
 const FLOOR = SKILL_FLOOR;
 
