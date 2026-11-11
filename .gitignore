@@ -45,3 +45,6 @@ preview.png
 
 # Skia web runtime, copied from node_modules by postinstall
 public/canvaskit.wasm
+
+# Claude Code personal notes
+CLAUDE.local.md
