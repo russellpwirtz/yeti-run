@@ -1,98 +1,37 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button, Column, Host, Spacer, Text } from '@expo/ui';
+import { useColorScheme } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSettings } from '@/state/settings';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+// Play tab. Everything here is @expo/ui "universal" components: on iOS they
+// render as SwiftUI views, on Android as Jetpack Compose. `Host` is the bridge
+// between React Native's view tree and the native UI toolkit.
+export default function PlayScreen() {
+  const dark = useColorScheme() === 'dark';
+  const { haptics, sound } = useSettings();
+  const fg = dark ? '#FFFFFF' : '#0B1A2B';
+  const muted = dark ? '#9FB3C8' : '#52677D';
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <Host style={{ flex: 1 }} seedColor="#2E86DE">
+      <Column alignment="center" spacing={16}>
+        <Spacer flexible />
+        <Text textStyle={{ fontSize: 44, fontWeight: '900', color: fg, letterSpacing: 2 }}>
+          YETI RUN
+        </Text>
+        <Text textStyle={{ fontSize: 17, color: muted }}>Outrun the yeti. Dodge the trees.</Text>
+        <Spacer size={24} />
+        <Text textStyle={{ fontSize: 15, color: muted }}>Best score: —</Text>
+        <Button
+          label="Start run"
+          onPress={() =>
+            alert(`The slope arrives in milestone 3.\nHaptics ${on(haptics)}, sound ${on(sound)}.`)
+          }
+        />
+        <Spacer flexible />
+      </Column>
+    </Host>
   );
 }
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
+const on = (v: boolean) => (v ? 'on' : 'off');

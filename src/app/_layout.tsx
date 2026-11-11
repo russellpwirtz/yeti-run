@@ -1,18 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { SettingsProvider } from '@/state/settings';
 
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+// Root layout: wraps every screen. NativeTabs renders the platform's real tab bar
+// (UITabBarController on iOS, Material bottom navigation on Android), so each
+// file in src/app becomes a tab named after its route.
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <SettingsProvider>
+      <NativeTabs>
+        <NativeTabs.Trigger name="index">
+          <NativeTabs.Trigger.Label>Play</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="figure.skiing.downhill" md="downhill_skiing" />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="settings">
+          <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="gearshape" md="settings" />
+        </NativeTabs.Trigger>
+      </NativeTabs>
+    </SettingsProvider>
   );
 }
