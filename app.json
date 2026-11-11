@@ -37,12 +37,26 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
       "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c626c882-4e8b-452e-b544-c849c969d756"
+      }
+    },
+    "owner": "dangerussells-team"
   }
 }
