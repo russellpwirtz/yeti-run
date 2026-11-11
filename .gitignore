@@ -42,3 +42,6 @@ example
 /ios
 /android
 preview.png
+
+# Skia web runtime, copied from node_modules by postinstall
+public/canvaskit.wasm

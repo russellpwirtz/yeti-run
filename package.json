@@ -45,7 +45,10 @@
     "lint": "expo lint",
     "test": "tsx scripts/sim-check.ts",
     "preview": "tsx --tsconfig scripts/preview/tsconfig.json scripts/preview/render-preview.ts",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/preview"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/preview",
+    "postinstall": "setup-skia-web public",
+    "check:bundle": "expo export --platform ios --platform android --platform web --output-dir dist",
+    "check": "npm run typecheck && expo lint && npm test && npm run check:bundle"
   },
   "private": true
 }

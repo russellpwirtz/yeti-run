@@ -328,3 +328,31 @@ export const SKIER_ART: Art = {
     [3, 14, 5, 1, BOOT],
   ],
 };
+
+// Pixel lettering for in-world signs (the start banner). Drawn as art rather
+// than with a font so it looks the same everywhere — Skia on web has no system
+// fonts — and matches the rest of the hill.
+const GLYPHS: Record<string, string[]> = {
+  Y: ["#.#", "#.#", ".#.", ".#.", ".#."],
+  E: ["###", "#..", "##.", "#..", "###"],
+  T: ["###", ".#.", ".#.", ".#.", ".#."],
+  I: ["###", ".#.", ".#.", ".#.", "###"],
+  R: ["##.", "#.#", "##.", "#.#", "#.#"],
+  U: ["#.#", "#.#", "#.#", "#.#", "###"],
+  N: ["#..#", "##.#", "#.##", "#..#", "#..#"],
+  " ": ["..", "..", "..", "..", ".."],
+};
+
+export function pixelText(text: string, color: string): Art {
+  const px: Px[] = [];
+  let x = 0;
+  for (const ch of text) {
+    const rows = GLYPHS[ch];
+    if (!rows) throw new Error(`pixelText: no glyph for "${ch}"`);
+    rows.forEach((row, y) => {
+      for (let i = 0; i < row.length; i++) if (row[i] === "#") px.push([x + i, y, 1, 1, color]);
+    });
+    x += rows[0].length + 1;
+  }
+  return { w: x - 1, h: 5, px };
+}

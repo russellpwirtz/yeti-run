@@ -10,11 +10,9 @@
 
 import {
   createPicture,
-  matchFont,
   PaintStyle,
   Skia,
   type SkCanvas,
-  type SkFont,
   type SkPaint,
   type SkPicture,
 } from '@shopify/react-native-skia';
@@ -44,6 +42,7 @@ import {
   YETI_B,
   YETI_GRAB,
   flagArt,
+  pixelText,
   type Art,
 } from './art';
 import {
@@ -151,7 +150,8 @@ function drawObstacle(c: SkCanvas, o: Obstacle) {
   stamp(c, ART_BY_KIND[o.kind], o.x, o.y);
 }
 
-let bannerFont: SkFont | null = null;
+const BANNER_TITLE = pixelText('YETI RUN', FROST);
+
 function drawStartBanner(c: SkCanvas) {
   const pole = fill(FROST);
   c.drawRect(r(-118, 72, 3, 66), pole);
@@ -162,12 +162,7 @@ function drawStartBanner(c: SkCanvas) {
   border.setStyle(PaintStyle.Stroke);
   border.setStrokeWidth(1);
   c.drawRect(r(-123.5, 66.5, 247, 25), border);
-  bannerFont ??= matchFont({ fontSize: 14, fontWeight: 'bold' });
-  const label = 'YETI RUN';
-  // Summed glyph widths rather than measureText, which Skia's web/headless
-  // build (scripts/preview) doesn't implement.
-  const width = bannerFont.getGlyphWidths(bannerFont.getGlyphIDs(label)).reduce((a, b) => a + b, 0);
-  c.drawText(label, -width / 2, 84, fill(FROST), bannerFont);
+  stamp(c, BANNER_TITLE, 0, 83, 2);
 }
 
 // ── The skier ───────────────────────────────────────────────────────────────
