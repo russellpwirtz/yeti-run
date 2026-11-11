@@ -75,13 +75,14 @@ export const YETI_SCALE = 4; // the yeti is bigger than everything else on the h
 export const SKIER_SCREEN_X = 0.5;
 export const SKIER_SCREEN_Y = 0.3;
 
-/** The rect around the skier worth snapshotting for a field of w × h. */
-export function viewFor(w: number, h: number) {
+/** The rect around the skier worth snapshotting for a field of w × h, with
+ *  the skier `screenY` of the way down it. */
+export function viewFor(w: number, h: number, screenY = SKIER_SCREEN_Y) {
   return {
     left: w * SKIER_SCREEN_X + 60,
     right: w * (1 - SKIER_SCREEN_X) + 60,
-    up: h * SKIER_SCREEN_Y + 40,
-    down: h * (1 - SKIER_SCREEN_Y) + 90,
+    up: h * screenY + 40,
+    down: h * (1 - screenY) + 90,
   };
 }
 
@@ -137,7 +138,7 @@ function groundPicture(): SkPicture {
 }
 
 /** A sprite standing on the snow: its art's bottom-centre sits on (x, y). */
-function stamp(c: SkCanvas, art: Art, x: number, y: number, scale = SCALE, opacity = 1) {
+export function stamp(c: SkCanvas, art: Art, x: number, y: number, scale = SCALE, opacity = 1) {
   c.save();
   c.translate(Math.round(x - (art.w * scale) / 2), Math.round(y - art.h * scale + scale));
   if (opacity < 1) c.saveLayer(fill('#000000', opacity));
@@ -393,18 +394,20 @@ export type FrameExtras = {
   eatMs?: number | null;
   /** Seconds for the snowfall's drift; null turns the snowfall off (reduced motion). */
   snowT?: number | null;
+  /** Where the skier sits, as a fraction down the field (the title screen sets it lower). */
+  screenY?: number;
 };
 
 export function renderFrame(
   snap: YetiRunSnapshot,
   w: number,
   h: number,
-  { tracks = [], pops = [], eatMs = null, snowT = snap.t }: FrameExtras = {},
+  { tracks = [], pops = [], eatMs = null, snowT = snap.t, screenY = SKIER_SCREEN_Y }: FrameExtras = {},
 ): SkPicture {
   return createPicture((c) => {
     c.drawColor(Skia.Color(SNOW));
     const camX = Math.round(w * SKIER_SCREEN_X - snap.x);
-    const camY = Math.round(h * SKIER_SCREEN_Y - snap.y);
+    const camY = Math.round(h * screenY - snap.y);
 
     // Ground texture, tiled and scrolled with the camera
     const ground = groundPicture();
@@ -452,7 +455,7 @@ export function renderFrame(
     // floating over the skier's head.
     if (snowT !== null) drawSnowfall(c, w, h, camX, camY, snowT);
     const headX = w * SKIER_SCREEN_X;
-    const headY = h * SKIER_SCREEN_Y - SKIER_H - 18 - snap.z;
+    const headY = h * screenY - SKIER_H - 18 - snap.z;
     for (const p of pops) drawPop(c, p, headX, headY);
   }, r(0, 0, w, h));
 }
