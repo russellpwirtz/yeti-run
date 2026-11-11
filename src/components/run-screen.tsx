@@ -3,6 +3,7 @@ import { Canvas, Picture } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FROST, GATE_RED, NAVY_2, RULE } from '@/game/art';
@@ -14,17 +15,24 @@ import { useRunLoop, type Hud } from '@/game/use-run-loop';
 export default function RunScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { picture, hud, over, restart } = useRunLoop(width, height);
+  const { picture, gesture, hud, over, restart } = useRunLoop(width, height);
 
   return (
     <View style={styles.fill}>
       <StatusBar hidden />
-      <Canvas style={styles.fill}>
-        <Picture picture={picture} />
-      </Canvas>
+      <GestureDetector gesture={gesture}>
+        <Canvas style={styles.fill}>
+          <Picture picture={picture} />
+        </Canvas>
+      </GestureDetector>
 
       <View style={[styles.panel, styles.top, { top: insets.top + 12 }]}>
-        <Host matchContents={{ vertical: true }} style={styles.host} colorScheme="dark" seedColor={FROST}>
+        <Host
+          matchContents={{ vertical: true }}
+          style={styles.host}
+          colorScheme="dark"
+          seedColor={FROST}
+        >
           <Row alignment="center" spacing={12}>
             <Text textStyle={{ color: FROST, fontSize: 17, fontWeight: '700' }}>
               {`${Math.floor(hud.distM)} m`}
@@ -37,9 +45,28 @@ export default function RunScreen() {
         </Host>
       </View>
 
+      {!over && !hud.pushedOff && (
+        <View pointerEvents="none" style={[styles.panel, { bottom: insets.bottom + 16 }]}>
+          <Host matchContents={{ vertical: true }} style={styles.host} colorScheme="dark">
+            <Column spacing={6}>
+              {HOW_TO_PLAY.map((line) => (
+                <Text key={line} textStyle={{ color: FROST, fontSize: 14 }}>
+                  {line}
+                </Text>
+              ))}
+            </Column>
+          </Host>
+        </View>
+      )}
+
       {over && (
         <View style={[styles.panel, { bottom: insets.bottom + 16 }]}>
-          <Host matchContents={{ vertical: true }} style={styles.host} colorScheme="dark" seedColor={FROST}>
+          <Host
+            matchContents={{ vertical: true }}
+            style={styles.host}
+            colorScheme="dark"
+            seedColor={FROST}
+          >
             <Column spacing={10}>
               <Text textStyle={{ color: FROST, fontSize: 22, fontWeight: '800' }}>
                 The yeti got you
@@ -59,6 +86,12 @@ export default function RunScreen() {
     </View>
   );
 }
+
+const HOW_TO_PLAY = [
+  'Hold where you want to go, and drag to steer',
+  'Tap to hop rocks · drag far straight down to tuck',
+  'Off a ramp, swipe ← → ↑ ↓ for tricks',
+];
 
 function YetiWarning({ hud }: { hud: Hud }) {
   if (hud.yeti === 'howl') {

@@ -205,7 +205,7 @@ function drawTracks(c: SkCanvas, segs: readonly TrackSeg[]) {
 
 // ── The skier ───────────────────────────────────────────────────────────────
 
-const SKIER_H = SKIER_ART.h * SCALE;
+export const SKIER_H = SKIER_ART.h * SCALE;
 
 function drawSkis(c: SkCanvas, deg: number, crashed: boolean, daffy: boolean) {
   // The skis point along the direction of travel, squashed into the same

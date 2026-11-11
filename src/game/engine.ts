@@ -7,7 +7,12 @@
 import type { Bot } from './bots';
 import {
   freshSim,
+  inBigAir,
   MAX_FRAME_S,
+  pressAction,
+  pressTrick,
+  setAim,
+  setTuck,
   snapshotOf,
   step,
   STEP_S,
@@ -60,6 +65,32 @@ export class RunEngine {
       this.recordTracks();
     }
     return !this.sim.over;
+  }
+
+  // ── Player input (touch controls call these; a run that's over ignores them)
+
+  /** Swing toward heading index `idx`; null lets go and keeps the heading. */
+  aim(idx: number | null, sidestep = false): void {
+    if (this.over && idx !== null) return;
+    setAim(this.sim, idx, sidestep);
+  }
+
+  tuck(on: boolean): void {
+    if (this.over && on) return;
+    setTuck(this.sim, on);
+  }
+
+  /** Hop on the snow; a Daffy in ramp air. */
+  action(): void {
+    if (!this.over) pressAction(this.sim);
+  }
+
+  /** A trick, only in ramp air. Returns false anywhere else, so the caller
+   *  can treat the same swipe as steering instead. */
+  trick(kind: number): boolean {
+    if (this.over || !inBigAir(this.sim)) return false;
+    pressTrick(this.sim, kind);
+    return true;
   }
 
   snapshot(view: Parameters<typeof snapshotOf>[1]): YetiRunSnapshot {

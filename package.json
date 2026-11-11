@@ -43,7 +43,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "tsx scripts/sim-check.ts",
+    "test": "tsx scripts/sim-check.ts && tsx scripts/controls-check.ts",
     "preview": "tsx --tsconfig scripts/preview/tsconfig.json scripts/preview/render-preview.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/preview",
     "postinstall": "setup-skia-web public",
