@@ -1,0 +1,51 @@
+// Renders real game frames to a PNG contact sheet, off-device:
+//
+//   npm run preview -- [outFile] [seed]
+//
+// It runs the app's own renderFrame() (src/game/render.ts) on headless Skia,
+// over an autopilot run, at a few moments from the start to the yeti's catch.
+// Handy for checking art and camera changes without opening the app.
+
+import { writeFileSync } from 'node:fs';
+
+import { DemoRun } from '../../src/game/demo-run';
+import { renderFrame, viewFor } from '../../src/game/render';
+import { initSkia, makeSurface, matchFont } from './skia-shim';
+
+const W = 390; // an iPhone-sized field, in points
+const H = 844;
+const out = process.argv[2] ?? 'preview.png';
+const seed = Number(process.argv[3] ?? 4242);
+
+async function main() {
+  const Skia = await initSkia();
+  const run = new DemoRun(seed);
+  run.at(999, viewFor(W, H)); // play to the end to learn when it ends
+  const end = run.endedAt ?? 60;
+  const moments = [0, 2, 8, 20, 35, end - 4, end - 1, end];
+
+  const sheet = makeSurface(W * moments.length, H + 28);
+  const c = sheet.getCanvas();
+  c.drawColor(Skia.Color('#081022'));
+  const label = Skia.Paint();
+  label.setColor(Skia.Color('#a8c8f0'));
+  const font = matchFont({ fontSize: 16 });
+
+  moments.forEach((t, i) => {
+    const snap = new DemoRun(seed).at(t, viewFor(W, H));
+    c.save();
+    c.translate(i * W, 0);
+    c.clipRect(Skia.XYWHRect(0, 0, W - 4, H), 1, false);
+    c.drawPicture(renderFrame(snap, W, H));
+    c.restore();
+    c.drawText(`${t.toFixed(1)}s  ${Math.floor(snap.distM)}m  ${snap.yeti}`, i * W + 8, H + 20, label, font);
+  });
+  sheet.flush();
+  writeFileSync(out, sheet.makeImageSnapshot().encodeToBytes());
+  console.log(`seed ${seed}: run ends at ${end.toFixed(1)}s → ${out}`);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

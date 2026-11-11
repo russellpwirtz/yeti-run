@@ -1,4 +1,5 @@
 import { Button, Column, Host, Spacer, Text } from '@expo/ui';
+import { router } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 import { useSettings } from '@/state/settings';
@@ -22,12 +23,10 @@ export default function PlayScreen() {
         <Text textStyle={{ fontSize: 17, color: muted }}>Outrun the yeti. Dodge the trees.</Text>
         <Spacer size={24} />
         <Text textStyle={{ fontSize: 15, color: muted }}>Best score: —</Text>
-        <Button
-          label="Start run"
-          onPress={() =>
-            alert(`The slope arrives in milestone 3.\nHaptics ${on(haptics)}, sound ${on(sound)}.`)
-          }
-        />
+        <Button label="Start run" onPress={() => router.push('/run')} />
+        <Text textStyle={{ fontSize: 13, color: muted }}>
+          {`Haptics ${on(haptics)} · sound ${on(sound)}`}
+        </Text>
         <Spacer flexible />
       </Column>
     </Host>

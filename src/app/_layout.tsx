@@ -1,23 +1,20 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { Stack } from 'expo-router';
 
 import { SettingsProvider } from '@/state/settings';
 
-// Root layout: wraps every screen. NativeTabs renders the platform's real tab bar
-// (UITabBarController on iOS, Material bottom navigation on Android), so each
-// file in src/app becomes a tab named after its route.
+// Root layout: a native stack. The tabs are its base screen; the game ("run")
+// is presented over them full screen, so the tab bar is out of the way while
+// you ski and dismissing the run drops you back where you were.
 export default function RootLayout() {
   return (
     <SettingsProvider>
-      <NativeTabs>
-        <NativeTabs.Trigger name="index">
-          <NativeTabs.Trigger.Label>Play</NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon sf="figure.skiing.downhill" md="downhill_skiing" />
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="settings">
-          <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon sf="gearshape" md="settings" />
-        </NativeTabs.Trigger>
-      </NativeTabs>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="run"
+          options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }}
+        />
+      </Stack>
     </SettingsProvider>
   );
 }
