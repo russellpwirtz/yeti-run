@@ -20,6 +20,8 @@
 //   f. air rules: a hop clears a rock but not a pine; ramp air grows with hit
 //      speed, so a tucked hit fits a combo a standing one can't; landing
 //      mid-trick wipes out; the arrows don't steer in the air
+//   g. the run engine (the app's game loop) replays the same run whatever the
+//      frame timing, caps stalls, and keeps a bounded ski-track history
 //
 // It also prints the score distributions per bot, because those are the
 // numbers someone will want when re-tuning the floor or the yeti.
@@ -46,6 +48,7 @@ import {
   type YetiRunSim,
 } from "../src/game/sim";
 import { makeSteerBot, type Bot } from "../src/game/bots";
+import { RunEngine, TRACK_MAX_POINTS } from "../src/game/engine";
 
 let fails = 0;
 function ok(label: string, cond: boolean, extra = "") {
@@ -296,6 +299,25 @@ console.log("air");
     const g = freshSim(5);
     ok("no tricks on the ground", !pressTrick(g, TRICK_BACKFLIP));
   }
+}
+
+// ── g. The run engine (the app's game loop) ─────────────────────────────────
+console.log("engine");
+{
+  // Real frame times are uneven; the engine must still play the exact same
+  // run as stepping the sim directly, just sliced differently.
+  const direct = run(4242, steerBot);
+  const e = new RunEngine(4242, steerBot);
+  const jitter = [1 / 60, 1 / 30, 1 / 120, 0.05, 1 / 90];
+  for (let k = 0; e.advance(jitter[k % jitter.length]); k++);
+  ok("uneven frames replay the same run as fixed steps", JSON.stringify(e.sim) === JSON.stringify(direct.s));
+
+  const stall = new RunEngine(7, steerBot);
+  stall.advance(10);
+  ok("a 10 s stall advances at most MAX_FRAME_S", stall.elapsed <= 0.25 + 1e-9, `${stall.elapsed.toFixed(3)}s`);
+
+  const points = e.tracks.reduce((n, seg) => n + seg.length, 0);
+  ok("ski tracks are recorded and capped", points > 0 && points <= TRACK_MAX_POINTS, `${points} points`);
 }
 
 console.log(fails === 0 ? "\nall yeti-run checks passed" : `\n${fails} check(s) FAILED`);

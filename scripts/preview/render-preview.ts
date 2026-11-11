@@ -8,7 +8,9 @@
 
 import { writeFileSync } from 'node:fs';
 
-import { DemoRun } from '../../src/game/demo-run';
+import { makeSteerBot } from '../../src/game/bots';
+import { RunEngine } from '../../src/game/engine';
+import { STEP_S } from '../../src/game/sim';
 import { renderFrame, viewFor } from '../../src/game/render';
 import { initSkia, makeSurface, matchFont } from './skia-shim';
 
@@ -19,9 +21,10 @@ const seed = Number(process.argv[3] ?? 4242);
 
 async function main() {
   const Skia = await initSkia();
-  const run = new DemoRun(seed);
-  run.at(999, viewFor(W, H)); // play to the end to learn when it ends
-  const end = run.endedAt ?? 60;
+  // Play the run once to learn when it ends, then again to shoot the frames
+  const probe = new RunEngine(seed, makeSteerBot(false));
+  while (probe.advance(STEP_S));
+  const end = probe.elapsed;
   const moments = [0, 2, 8, 20, 35, end - 4, end - 1, end];
 
   const sheet = makeSurface(W * moments.length, H + 28);
@@ -31,12 +34,14 @@ async function main() {
   label.setColor(Skia.Color('#a8c8f0'));
   const font = matchFont({ fontSize: 16 });
 
+  const engine = new RunEngine(seed, makeSteerBot(false));
   moments.forEach((t, i) => {
-    const snap = new DemoRun(seed).at(t, viewFor(W, H));
+    while (engine.elapsed < t - STEP_S / 2 && engine.advance(STEP_S));
+    const snap = engine.snapshot(viewFor(W, H));
     c.save();
     c.translate(i * W, 0);
     c.clipRect(Skia.XYWHRect(0, 0, W - 4, H), 1, false);
-    c.drawPicture(renderFrame(snap, W, H));
+    c.drawPicture(renderFrame(snap, W, H, engine.tracks));
     c.restore();
     c.drawText(`${t.toFixed(1)}s  ${Math.floor(snap.distM)}m  ${snap.yeti}`, i * W + 8, H + 20, label, font);
   });

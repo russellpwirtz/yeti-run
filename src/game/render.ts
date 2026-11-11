@@ -36,6 +36,7 @@ import {
   SKI_TIP,
   SKIER_ART,
   SNOW,
+  SNOW_DEEP,
   SNOW_SHADE,
   STUMP_ART,
   YETI_A,
@@ -57,6 +58,7 @@ import {
   type Obstacle,
   type YetiRunSnapshot,
 } from './sim';
+import type { TrackSeg } from './engine';
 
 export const SCALE = 3; // screen px per art px
 export const YETI_SCALE = 4; // the yeti is bigger than everything else on the hill
@@ -75,13 +77,24 @@ export function viewFor(w: number, h: number) {
 
 // ── Paint helpers ───────────────────────────────────────────────────────────
 
+// Paints are cached by color + opacity: frames are drawn 60 times a second, and
+// most shapes share a handful of colors. Treat returned paints as read-only.
+const paints = new Map<string, SkPaint>();
 function fill(color: string, opacity = 1): SkPaint {
-  const p = Skia.Paint();
-  p.setAntiAlias(false); // crisp pixel edges
-  p.setColor(Skia.Color(color));
-  if (opacity < 1) p.setAlphaf(opacity);
+  const key = `${color}/${opacity}`;
+  let p = paints.get(key);
+  if (!p) {
+    p = Skia.Paint();
+    p.setAntiAlias(false); // crisp pixel edges
+    p.setColor(Skia.Color(color));
+    if (opacity < 1) p.setAlphaf(opacity);
+    paints.set(key, p);
+  }
   return p;
 }
+
+let borderPaint: SkPaint | null = null;
+let trackPaint: SkPaint | null = null;
 
 const r = (x: number, y: number, w: number, h: number) => Skia.XYWHRect(x, y, w, h);
 
@@ -158,11 +171,36 @@ function drawStartBanner(c: SkCanvas) {
   c.drawRect(r(116, 72, 3, 66), pole);
   c.drawRect(r(-120, 138, 240, 2), fill(SNOW_SHADE));
   c.drawRect(r(-124, 66, 248, 26), fill(NAVY_2, 0.9));
-  const border = fill(RULE);
-  border.setStyle(PaintStyle.Stroke);
-  border.setStrokeWidth(1);
-  c.drawRect(r(-123.5, 66.5, 247, 25), border);
+  if (!borderPaint) {
+    borderPaint = fill(RULE).copy();
+    borderPaint.setStyle(PaintStyle.Stroke);
+    borderPaint.setStrokeWidth(1);
+  }
+  c.drawRect(r(-123.5, 66.5, 247, 25), borderPaint);
   stamp(c, BANNER_TITLE, 0, 83, 2);
+}
+
+// Ski tracks: two grooves per segment, offset either side of the line of travel.
+function drawTracks(c: SkCanvas, segs: readonly TrackSeg[]) {
+  if (!trackPaint) {
+    trackPaint = fill(SNOW_DEEP, 0.55).copy();
+    trackPaint.setStyle(PaintStyle.Stroke);
+    trackPaint.setStrokeWidth(2);
+  }
+  for (const seg of segs) {
+    if (seg.length < 2) continue;
+    for (const sign of [1, -1]) {
+      const path = Skia.PathBuilder.Make();
+      seg.forEach((p, i) => {
+        const rad = (HEADING_DEG[p.heading] * Math.PI) / 180;
+        const x = p.x + Math.cos(rad) * 4 * sign;
+        const y = p.y - Math.sin(rad) * 4 * sign;
+        if (i === 0) path.moveTo(x, y);
+        else path.lineTo(x, y);
+      });
+      c.drawPath(path.detach(), trackPaint);
+    }
+  }
 }
 
 // ── The skier ───────────────────────────────────────────────────────────────
@@ -237,7 +275,12 @@ function drawSkier(c: SkCanvas, snap: YetiRunSnapshot) {
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 
-export function renderFrame(snap: YetiRunSnapshot, w: number, h: number): SkPicture {
+export function renderFrame(
+  snap: YetiRunSnapshot,
+  w: number,
+  h: number,
+  tracks: readonly TrackSeg[] = [],
+): SkPicture {
   return createPicture((c) => {
     c.drawColor(Skia.Color(SNOW));
     const camX = Math.round(w * SKIER_SCREEN_X - snap.x);
@@ -257,6 +300,7 @@ export function renderFrame(snap: YetiRunSnapshot, w: number, h: number): SkPict
     // Everything in world coordinates from here
     c.save();
     c.translate(camX, camY);
+    drawTracks(c, tracks); // pressed into the snow, under everything
 
     // Painter's algorithm: draw back-to-front by depth (y on the hill), with
     // flat things (moguls, ramps) under anything standing near them and an

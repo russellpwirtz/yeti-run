@@ -1,29 +1,20 @@
-import { Button, Column, Host, Row, Slider, Spacer, Text } from '@expo/ui';
+import { Button, Column, Host, Row, Spacer, Text } from '@expo/ui';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FROST, NAVY_2, RULE } from '@/game/art';
-import { DemoRun } from '@/game/demo-run';
-import { renderFrame, viewFor } from '@/game/render';
+import { FROST, GATE_RED, NAVY_2, RULE } from '@/game/art';
+import { useRunLoop, type Hud } from '@/game/use-run-loop';
 
-const MAX_S = 75; // past the longest autopilot run, so the slider can reach the catch
-
-const newSeed = () => (Math.random() * 2 ** 31) | 0;
-
-// The run screen (routes: src/app/run.tsx, run.web.tsx). Milestone 3: the game drawn with Skia, driven by a scrub slider instead of a
-// clock. Drag through the run and the camera follows the autopilot down the hill.
+// The run screen (route: src/app/run.tsx). The hill is a Skia canvas fed a new
+// picture every frame by useRunLoop; the HUD and the end-of-run panel are
+// @expo/ui native views laid over it.
 export default function RunScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [run, setRun] = useState(() => new DemoRun(newSeed()));
-  const [seconds, setSeconds] = useState(0);
-
-  const snap = useMemo(() => run.at(seconds, viewFor(width, height)), [run, seconds, width, height]);
-  const picture = useMemo(() => renderFrame(snap, width, height), [snap, width, height]);
+  const { picture, hud, over, restart } = useRunLoop(width, height);
 
   return (
     <View style={styles.fill}>
@@ -32,30 +23,55 @@ export default function RunScreen() {
         <Picture picture={picture} />
       </Canvas>
 
-      <View style={[styles.panel, { bottom: insets.bottom + 16 }]}>
-        <Host matchContents={{ vertical: true }} colorScheme="dark" seedColor={FROST}>
-          <Column spacing={8}>
-            <Text textStyle={{ color: FROST, fontSize: 15, fontWeight: '600' }}>
-              {`${seconds.toFixed(1)} s · ${Math.floor(snap.distM)} m · score ${snap.score} · yeti ${snap.yeti}`}
+      <View style={[styles.panel, styles.top, { top: insets.top + 12 }]}>
+        <Host matchContents={{ vertical: true }} style={styles.host} colorScheme="dark" seedColor={FROST}>
+          <Row alignment="center" spacing={12}>
+            <Text textStyle={{ color: FROST, fontSize: 17, fontWeight: '700' }}>
+              {`${Math.floor(hud.distM)} m`}
             </Text>
-            <Slider value={seconds} min={0} max={MAX_S} onValueChange={setSeconds} />
-            <Row spacing={8}>
-              <Button
-                label="New hill"
-                variant="outlined"
-                onPress={() => {
-                  setRun(new DemoRun(newSeed()));
-                  setSeconds(0);
-                }}
-              />
-              <Spacer flexible />
-              <Button label="Close" onPress={() => router.back()} />
-            </Row>
-          </Column>
+            <Text textStyle={{ color: FROST, fontSize: 17 }}>{`score ${hud.score}`}</Text>
+            <Spacer flexible />
+            <YetiWarning hud={hud} />
+            {!over && <Button label="Quit" variant="text" onPress={() => router.back()} />}
+          </Row>
         </Host>
       </View>
+
+      {over && (
+        <View style={[styles.panel, { bottom: insets.bottom + 16 }]}>
+          <Host matchContents={{ vertical: true }} style={styles.host} colorScheme="dark" seedColor={FROST}>
+            <Column spacing={10}>
+              <Text textStyle={{ color: FROST, fontSize: 22, fontWeight: '800' }}>
+                The yeti got you
+              </Text>
+              <Text textStyle={{ color: FROST, fontSize: 15 }}>
+                {`${Math.floor(hud.distM)} m · ${hud.gatesPassed} gates · score ${hud.score}`}
+              </Text>
+              <Row spacing={8}>
+                <Button label="Ski again" onPress={restart} />
+                <Spacer flexible />
+                <Button label="Close" variant="outlined" onPress={() => router.back()} />
+              </Row>
+            </Column>
+          </Host>
+        </View>
+      )}
     </View>
   );
+}
+
+function YetiWarning({ hud }: { hud: Hud }) {
+  if (hud.yeti === 'howl') {
+    return <Text textStyle={{ color: GATE_RED, fontSize: 15, fontWeight: '700' }}>A howl…</Text>;
+  }
+  if (hud.yeti === 'chase') {
+    return (
+      <Text textStyle={{ color: GATE_RED, fontSize: 15, fontWeight: '700' }}>
+        {`Yeti ${Math.ceil(hud.yetiGapM)} m`}
+      </Text>
+    );
+  }
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -70,4 +86,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: RULE,
   },
+  top: { paddingVertical: 6 },
+  // @expo/ui's web Host content-sizes horizontally whenever matchContents is
+  // set, even vertical-only; stretch it so Spacer can push buttons to the edge.
+  host: { alignSelf: 'stretch' },
 });
