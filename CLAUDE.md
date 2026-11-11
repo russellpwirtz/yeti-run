@@ -17,10 +17,15 @@ npm run lint              # expo lint
 npm test                  # runs all three rule-check scripts below
 npx tsx scripts/sim-check.ts        # run a single check (also controls-check.ts, feedback-check.ts)
 npm run preview -- out.png 4242     # render real game frames headlessly to a PNG contact sheet (args: outFile, seed)
+npm run playtest                    # play the web build in headless Chromium (title, keys, touch); screenshots to playtest-out/
 npm run sounds            # regenerate the synthesized WAVs in assets/sounds/
 ```
 
-The tests are not Jest. Each one is a plain `tsx` script that asserts against the real code and exits 1 on failure. `sim-check.ts` also prints the score distribution for each bot, which you need when retuning the difficulty. Use `npm run preview` to check art or camera changes without opening the app. Its output, `preview.png`, is gitignored.
+The tests are not Jest. Each one is a plain `tsx` script that asserts against the real code and exits 1 on failure. `sim-check.ts` also prints the score distribution for each bot, which you need when retuning the difficulty. Use `npm run preview` to check art or camera changes without opening the app. Its output, `preview.png`, is gitignored. Use `npm run playtest` (the `playtest-web` skill) to confirm a change works in the running web app. It starts or reuses a dev server on port 8099.
+
+## Claude skills
+
+The project enables Expo's official plugin (`expo@claude-plugins-official`) in `.claude/settings.json`. Its skills target the latest SDK, so still check the v57 docs. The project's own skills are in `.claude/skills/`: `playtest-web`, and `deploy-web` (run it only with `/deploy-web`).
 
 `postinstall` copies `canvaskit.wasm` into `public/` (it's gitignored). Web Skia won't load without it, so run `npm install` on a fresh clone.
 

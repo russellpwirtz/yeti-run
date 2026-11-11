@@ -36,12 +36,12 @@
     "@types/react": "~19.2.4",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
+    "playwright": "^1.65.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
@@ -52,7 +52,8 @@
     "postinstall": "setup-skia-web public",
     "check:bundle": "expo export --platform ios --platform android --platform web --output-dir dist",
     "check": "npm run typecheck && expo lint && npm test && npm run check:bundle",
-    "sounds": "tsx scripts/make-sounds.ts"
+    "sounds": "tsx scripts/make-sounds.ts",
+    "playtest": "tsx scripts/playtest.ts"
   },
   "private": true
 }

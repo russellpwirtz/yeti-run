@@ -1,56 +1,61 @@
-# Welcome to your Expo app 👋
+# Yeti Run
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A top-down downhill skiing game in the spirit of SkiFree. Steer through pines,
+rocks and slalom gates, hit ramps for tricks, and outrun the yeti. Built with
+Expo, so it runs on iOS, Android and the web from one codebase.
 
-## Get started
+**Play it in your browser: https://yeti-run.expo.app**
 
-1. Install dependencies
+## Controls
 
-   ```bash
-   npm install
-   ```
+| | Touch | Keyboard (web) |
+|---|---|---|
+| Steer | Hold where you want to go, drag to adjust | ← → (or A / D) |
+| Tuck (faster, no turning) | Drag far straight down | Hold ↓ (or S) |
+| Hop rocks and stumps | Quick tap | Space (or ↑ / W) |
+| Tricks in ramp air | Swipe ← → ↑ ↓ | Arrow keys (or WASD) |
+| Ski again | Tap **Ski again** | Enter |
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Running it
 
 ```bash
-npm run reset-project
+npm install     # also copies Skia's canvaskit.wasm into public/ for the web build
+npm start       # Expo dev server: press w for web, or scan the QR code with Expo Go
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+The project is pinned to Expo SDK 57, the version Expo Go on physical devices
+supports at the moment.
 
-### Other setup steps
+| Command | Does |
+|---|---|
+| `npm run check` | Typecheck, lint, the rule checks, and bundle exports for iOS, Android and web |
+| `npm test` | The rule checks only: plain `tsx` scripts that assert against the real game code |
+| `npm run preview -- out.png 4242` | Render real game frames headlessly to a PNG contact sheet (output file, seed) |
+| `npm run playtest` | Play the web build in headless Chromium and save screenshots |
+| `npm run sounds` | Regenerate the synthesized sound effects in `assets/sounds/` |
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## How it's built
 
-## Learn more
+- **A pure, deterministic sim** (`src/game/sim.ts`). It uses a seeded RNG, fixed time steps and plain JSON state, with no React or platform code. That lets the tests, the headless preview and the title screen's attract-mode bot all drive the exact code the app runs.
+- **Skia rendering** (`src/game/render.ts`). Each frame is recorded into one `SkPicture`. The pixel art is defined as data in `art.ts`.
+- **A 60 fps loop that skips React.** The sim and renderer run on the JS thread each animation frame and hand the picture to the UI thread through a Reanimated shared value. React re-renders only for the HUD and screen changes.
+- **Input** comes from a gesture-handler Pan gesture for touch, and keyboard listeners on web.
+- **Feedback**: sound through expo-audio, haptics through expo-haptics. Settings and your best score are saved with expo-sqlite's kv-store on native and localStorage on web.
+- **Navigation and UI**: Expo Router with native tabs, and `@expo/ui` components for the screens.
 
-To learn more about developing your project with Expo, look at the following resources:
+[CLAUDE.md](CLAUDE.md) has the full architecture notes, including the platform
+splits and the gotchas around loading Skia on web.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## History
 
-## Join the community
+This started as a way to learn the Expo ecosystem by porting Yeti Run, a
+minigame from my earlier web project Runagotchu (`rungotchu` in the code
+history), to a native-first app. The git history follows the port milestone by
+milestone: scaffold, sim and tests, Skia canvas, game loop, touch and keyboard
+controls, polish, web hosting and the title screen. It was built with
+[Claude Code](https://claude.com/claude-code). The `CLAUDE.md` file and the
+project skills in `.claude/skills/` are part of that workflow.
 
-Join our community of developers creating universal apps.
+## License
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+[MIT](LICENSE)

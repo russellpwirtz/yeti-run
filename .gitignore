@@ -48,3 +48,6 @@ public/canvaskit.wasm
 
 # Claude Code personal notes
 CLAUDE.local.md
+
+# npm run playtest screenshots
+playtest-out/
