@@ -329,30 +329,76 @@ export const SKIER_ART: Art = {
   ],
 };
 
-// Pixel lettering for in-world signs (the start banner). Drawn as art rather
-// than with a font so it looks the same everywhere — Skia on web has no system
-// fonts — and matches the rest of the hill.
+// Pixel lettering for in-world signs (the start banner) and score pop-ups.
+// Drawn as art rather than with a font so it looks the same everywhere — Skia
+// on web has no system fonts — and matches the rest of the hill. 3×5 caps,
+// wider where a letter needs it.
 const GLYPHS: Record<string, string[]> = {
-  Y: ["#.#", "#.#", ".#.", ".#.", ".#."],
+  A: [".#.", "#.#", "###", "#.#", "#.#"],
+  B: ["##.", "#.#", "##.", "#.#", "##."],
+  C: [".##", "#..", "#..", "#..", ".##"],
+  D: ["##.", "#.#", "#.#", "#.#", "##."],
   E: ["###", "#..", "##.", "#..", "###"],
-  T: ["###", ".#.", ".#.", ".#.", ".#."],
+  F: ["###", "#..", "##.", "#..", "#.."],
+  G: [".##", "#..", "#.#", "#.#", ".##"],
+  H: ["#.#", "#.#", "###", "#.#", "#.#"],
   I: ["###", ".#.", ".#.", ".#.", "###"],
-  R: ["##.", "#.#", "##.", "#.#", "#.#"],
-  U: ["#.#", "#.#", "#.#", "#.#", "###"],
+  J: ["..#", "..#", "..#", "#.#", ".#."],
+  K: ["#.#", "#.#", "##.", "#.#", "#.#"],
+  L: ["#..", "#..", "#..", "#..", "###"],
+  M: ["#...#", "##.##", "#.#.#", "#...#", "#...#"],
   N: ["#..#", "##.#", "#.##", "#..#", "#..#"],
+  O: [".#.", "#.#", "#.#", "#.#", ".#."],
+  P: ["##.", "#.#", "##.", "#..", "#.."],
+  Q: [".#.", "#.#", "#.#", "#.#", ".##"],
+  R: ["##.", "#.#", "##.", "#.#", "#.#"],
+  S: [".##", "#..", ".#.", "..#", "##."],
+  T: ["###", ".#.", ".#.", ".#.", ".#."],
+  U: ["#.#", "#.#", "#.#", "#.#", "###"],
+  V: ["#.#", "#.#", "#.#", "#.#", ".#."],
+  W: ["#...#", "#...#", "#.#.#", "##.##", "#...#"],
+  X: ["#.#", "#.#", ".#.", "#.#", "#.#"],
+  Y: ["#.#", "#.#", ".#.", ".#.", ".#."],
+  Z: ["###", "..#", ".#.", "#..", "###"],
+  "0": ["###", "#.#", "#.#", "#.#", "###"],
+  "1": [".#", "##", ".#", ".#", ".#"],
+  "2": ["##.", "..#", ".#.", "#..", "###"],
+  "3": ["##.", "..#", ".#.", "..#", "##."],
+  "4": ["#.#", "#.#", "###", "..#", "..#"],
+  "5": ["###", "#..", "##.", "..#", "##."],
+  "6": [".##", "#..", "###", "#.#", "###"],
+  "7": ["###", "..#", ".#.", ".#.", ".#."],
+  "8": ["###", "#.#", "###", "#.#", "###"],
+  "9": ["###", "#.#", "###", "..#", "##."],
+  "+": ["...", ".#.", "###", ".#.", "..."],
+  "!": ["#", "#", "#", ".", "#"],
+  "×": ["...", "#.#", ".#.", "#.#", "..."],
   " ": ["..", "..", "..", "..", ".."],
 };
 
+/** Every character pixelText can draw. */
+export const GLYPH_CHARS: ReadonlySet<string> = new Set(Object.keys(GLYPHS));
+
+// The renderer caches each Art's picture by identity, so the same text and
+// color must come back as the same object.
+const textCache = new Map<string, Art>();
+
+/** `text` as pixel art (unknown characters are skipped). */
 export function pixelText(text: string, color: string): Art {
+  const cacheKey = `${color}|${text}`;
+  const hit = textCache.get(cacheKey);
+  if (hit) return hit;
   const px: Px[] = [];
   let x = 0;
   for (const ch of text) {
     const rows = GLYPHS[ch];
-    if (!rows) throw new Error(`pixelText: no glyph for "${ch}"`);
+    if (!rows) continue;
     rows.forEach((row, y) => {
       for (let i = 0; i < row.length; i++) if (row[i] === "#") px.push([x + i, y, 1, 1, color]);
     });
     x += rows[0].length + 1;
   }
-  return { w: x - 1, h: 5, px };
+  const art = { w: Math.max(0, x - 1), h: 5, px };
+  textCache.set(cacheKey, art);
+  return art;
 }

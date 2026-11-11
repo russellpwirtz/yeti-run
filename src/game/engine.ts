@@ -5,6 +5,7 @@
 // Ported from the loop half of rungotchu's use-yeti-run.ts.
 
 import type { Bot } from './bots';
+import { EventWatcher, type GameEvent } from './events';
 import {
   freshSim,
   inBigAir,
@@ -35,10 +36,20 @@ export class RunEngine {
   private trackPoints = 0;
   private acc = 0;
   private frame = 0;
+  private readonly watcher: EventWatcher;
+  private events: GameEvent[] = [];
 
   /** `bot`, if given, plays the run (the autopilot) — called before each step. */
   constructor(seed: number, private readonly bot?: Bot) {
     this.sim = freshSim(seed);
+    this.watcher = new EventWatcher(this.sim);
+  }
+
+  /** Everything that happened since the last call (hops, gates, crashes, the yeti). */
+  takeEvents(): GameEvent[] {
+    const out = this.events;
+    this.events = [];
+    return out;
   }
 
   get over(): boolean {
@@ -61,6 +72,7 @@ export class RunEngine {
     while (this.acc >= STEP_S && !this.sim.over) {
       this.bot?.(this.sim, this.frame);
       step(this.sim);
+      this.watcher.collect(this.sim, this.events);
       this.frame++;
       this.acc -= STEP_S;
       this.recordTracks();

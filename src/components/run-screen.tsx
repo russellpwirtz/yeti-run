@@ -2,12 +2,14 @@ import { Button, Column, Host, Row, Spacer, Text } from '@expo/ui';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FROST, GATE_RED, NAVY_2, RULE } from '@/game/art';
 import { useRunLoop, type Hud } from '@/game/use-run-loop';
+import { useSettings } from '@/state/settings';
 
 // The run screen (route: src/app/run.tsx). The hill is a Skia canvas fed a new
 // picture every frame by useRunLoop; the HUD and the end-of-run panel are
@@ -15,7 +17,16 @@ import { useRunLoop, type Hud } from '@/game/use-run-loop';
 export default function RunScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { picture, gesture, hud, over, restart } = useRunLoop(width, height);
+  const { haptics, sound, best, recordScore } = useSettings();
+  const [newBest, setNewBest] = useState(false);
+  const { picture, gesture, hud, over, restart } = useRunLoop(width, height, {
+    haptics,
+    sound,
+    onOver: (score) => {
+      setNewBest(score > best);
+      recordScore(score);
+    },
+  });
 
   return (
     <View style={styles.fill}>
@@ -69,11 +80,14 @@ export default function RunScreen() {
           >
             <Column spacing={10}>
               <Text textStyle={{ color: FROST, fontSize: 22, fontWeight: '800' }}>
-                The yeti got you
+                {newBest ? 'New best!' : 'The yeti got you'}
               </Text>
               <Text textStyle={{ color: FROST, fontSize: 15 }}>
                 {`${Math.floor(hud.distM)} m · ${hud.gatesPassed} gates · score ${hud.score}`}
               </Text>
+              {!newBest && best > 0 && (
+                <Text textStyle={{ color: FROST, fontSize: 13 }}>{`Best ${best}`}</Text>
+              )}
               {Platform.OS === 'web' && (
                 <Text textStyle={{ color: FROST, fontSize: 13 }}>Press Enter to ski again</Text>
               )}

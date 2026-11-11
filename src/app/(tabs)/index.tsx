@@ -9,7 +9,7 @@ import { useSettings } from '@/state/settings';
 // between React Native's view tree and the native UI toolkit.
 export default function PlayScreen() {
   const dark = useColorScheme() === 'dark';
-  const { haptics, sound } = useSettings();
+  const { haptics, sound, best } = useSettings();
   const fg = dark ? '#FFFFFF' : '#0B1A2B';
   const muted = dark ? '#9FB3C8' : '#52677D';
 
@@ -22,7 +22,9 @@ export default function PlayScreen() {
         </Text>
         <Text textStyle={{ fontSize: 17, color: muted }}>Outrun the yeti. Dodge the trees.</Text>
         <Spacer size={24} />
-        <Text textStyle={{ fontSize: 15, color: muted }}>Best score: —</Text>
+        <Text textStyle={{ fontSize: 15, color: muted }}>
+          {`Best score: ${best > 0 ? best : '—'}`}
+        </Text>
         <Button label="Start run" onPress={() => router.push('/run')} />
         <Text textStyle={{ fontSize: 13, color: muted }}>
           {`Haptics ${on(haptics)} · sound ${on(sound)}`}

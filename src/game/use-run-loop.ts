@@ -3,10 +3,15 @@
 // Every display frame, on the JS thread:
 //   1. let the touch controls see the time (a held press starts steering)
 //   2. advance the engine by the real time since the last frame (fixed steps)
-//   3. record the frame into an SkPicture (renderFrame)
-//   4. hand it to the canvas through a Reanimated shared value
+//   3. turn what happened (hops, gates, crashes, the yeti) into sound, haptics
+//      and score pop-ups
+//   4. record the frame into an SkPicture (renderFrame)
+//   5. hand it to the canvas through a Reanimated shared value
 //
-// Step 4 is what keeps this smooth: <Picture picture={sharedValue} /> is read
+// When the yeti catches the skier the sim stops, but the loop keeps drawing
+// for CATCH_BEAT_MS while it eats them; only then does the run count as over.
+//
+// Step 5 is what keeps this smooth: <Picture picture={sharedValue} /> is read
 // by Skia on the UI thread whenever the value changes, so the 60 fps path never
 // goes through React. React only re-renders for the HUD (~10× a second) and
 // for phase changes.
@@ -22,12 +27,22 @@ import { createPicture, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { Gesture, type PanGesture } from 'react-native-gesture-handler';
-import { useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 import { RunEngine } from './engine';
+import { Feedback } from './feedback';
 import { listenToKeys } from './keyboard-listener';
 import { KeyboardSteering } from './keys';
-import { renderFrame, SKIER_H, SKIER_SCREEN_X, SKIER_SCREEN_Y, viewFor } from './render';
+import { PopFeed } from './pops';
+import {
+  CATCH_BEAT_MS,
+  EAT_GRAB_MS,
+  renderFrame,
+  SKIER_H,
+  SKIER_SCREEN_X,
+  SKIER_SCREEN_Y,
+  viewFor,
+} from './render';
 import type { YetiRunSnapshot } from './sim';
 import { TouchSteering } from './touch';
 
@@ -96,7 +111,14 @@ function makeTouchGesture() {
   };
 }
 
-export function useRunLoop(width: number, height: number): RunLoop {
+export type RunLoopOptions = {
+  sound: boolean;
+  haptics: boolean;
+  /** Called once per run, when the end-of-run panel is due, with the final score. */
+  onOver: (score: number) => void;
+};
+
+export function useRunLoop(width: number, height: number, options: RunLoopOptions): RunLoop {
   const [blank] = useState(() => createPicture(() => {}));
   const picture = useSharedValue<SkPicture>(blank);
   const [seed, setSeed] = useState(newSeed);
@@ -110,6 +132,26 @@ export function useRunLoop(width: number, height: number): RunLoop {
     size.current = { width, height };
   }, [width, height]);
 
+  // Likewise the options and the system's reduce-motion setting (which turns
+  // the snowfall off).
+  const reduceMotion = useReducedMotion();
+  const opts = useRef({ ...options, reduceMotion });
+  useEffect(() => {
+    opts.current = { ...options, reduceMotion };
+  });
+
+  // One set of sound players for the whole screen, not one per run. Made in
+  // an effect, not during render: creating players is a side effect.
+  const feedback = useRef<Feedback | null>(null);
+  useEffect(() => {
+    const f = new Feedback(() => opts.current);
+    feedback.current = f;
+    return () => {
+      f.dispose();
+      feedback.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     const engine = new RunEngine(seed);
     // Aim from the skier's middle (the renderer pins their feet at
@@ -120,11 +162,15 @@ export function useRunLoop(width: number, height: number): RunLoop {
     }));
     touch.bind(controls);
 
+    const pops = new PopFeed();
+    let caughtAt: number | null = null; // when the yeti got the skier
+    let ended = false; // the catch has played out; the end panel is up
+
     const keyboard = new KeyboardSteering(engine);
     const stopKeys = listenToKeys({
       down: (key, repeat) => {
         if (!engine.over) return keyboard.down(key, repeat);
-        if (key !== 'Enter' || repeat) return false;
+        if (!ended || key !== 'Enter' || repeat) return false;
         setHud(EMPTY_HUD);
         setSeed(newSeed());
         return true;
@@ -137,6 +183,7 @@ export function useRunLoop(width: number, height: number): RunLoop {
     let last = nowS();
     let lastHud = -Infinity;
     let active = AppState.currentState !== 'background';
+    let gulped = false;
 
     const tick = () => {
       const now = nowS();
@@ -144,16 +191,41 @@ export function useRunLoop(width: number, height: number): RunLoop {
       const alive = engine.advance(now - last);
       last = now;
 
+      const events = engine.takeEvents();
+      for (const e of events) feedback.current?.handle(e);
+      pops.push(events, now);
+
+      // The catch: time the eating animation from the moment it happened.
+      let eatMs: number | null = null;
+      if (!alive && engine.sim.yeti === 'caught') {
+        caughtAt ??= now;
+        eatMs = (now - caughtAt) * 1000;
+        // The chomps start as the yeti lifts the skier to its mouth
+        if (!gulped && eatMs >= EAT_GRAB_MS) {
+          gulped = true;
+          feedback.current?.gulp();
+        }
+      }
+
       const { width: w, height: h } = size.current;
       const snap = engine.snapshot(viewFor(w, h));
-      picture.set(renderFrame(snap, w, h, engine.tracks));
+      picture.set(
+        renderFrame(snap, w, h, {
+          tracks: engine.tracks,
+          pops: pops.live(now),
+          eatMs,
+          snowT: opts.current.reduceMotion ? null : now,
+        }),
+      );
 
       if ((now - lastHud) * 1000 >= HUD_EVERY_MS || !alive) {
         lastHud = now;
         setHud(hudOf(snap));
       }
-      if (!alive) {
+      if (!alive && (eatMs === null || eatMs >= CATCH_BEAT_MS)) {
+        ended = true;
         setOverSeed(seed);
+        opts.current.onOver(snap.score);
         return;
       }
       raf = requestAnimationFrame(tick);

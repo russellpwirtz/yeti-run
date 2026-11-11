@@ -6,14 +6,17 @@
     "@expo/ui": "~57.0.26",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "~57.0.0",
+    "expo-audio": "~57.0.5",
     "expo-constants": "~57.0.23",
     "expo-device": "~57.0.2",
     "expo-font": "~57.0.4",
     "expo-glass-effect": "~57.0.5",
+    "expo-haptics": "~57.0.3",
     "expo-image": "~57.0.5",
     "expo-linking": "~57.0.13",
     "expo-router": "~57.0.30",
     "expo-splash-screen": "~57.0.11",
+    "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
@@ -43,12 +46,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "tsx scripts/sim-check.ts && tsx scripts/controls-check.ts",
+    "test": "tsx scripts/sim-check.ts && tsx scripts/controls-check.ts && tsx scripts/feedback-check.ts",
     "preview": "tsx --tsconfig scripts/preview/tsconfig.json scripts/preview/render-preview.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/preview",
     "postinstall": "setup-skia-web public",
     "check:bundle": "expo export --platform ios --platform android --platform web --output-dir dist",
-    "check": "npm run typecheck && expo lint && npm test && npm run check:bundle"
+    "check": "npm run typecheck && expo lint && npm test && npm run check:bundle",
+    "sounds": "tsx scripts/make-sounds.ts"
   },
   "private": true
 }

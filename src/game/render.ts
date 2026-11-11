@@ -7,6 +7,8 @@
 //
 // The camera works like SkiFree's: the skier stays at a fixed spot on screen
 // (SKIER_SCREEN_X/Y of the field) and the hill scrolls past.
+//
+// On top of the hill, in screen space: falling snow and the score pop-ups.
 
 import {
   createPicture,
@@ -23,6 +25,7 @@ import {
   GATE_GOLD,
   GATE_RED,
   GROUND_FLECKS,
+  NAVY,
   GROUND_TILE,
   MOGUL_ART,
   NAVY_2,
@@ -37,11 +40,17 @@ import {
   SKIER_ART,
   SNOW,
   SNOW_DEEP,
+  SNOW_HI,
   SNOW_SHADE,
   STUMP_ART,
   YETI_A,
   YETI_B,
+  YETI_CHEW_A,
+  YETI_CHEW_B,
   YETI_GRAB,
+  YETI_GULP,
+  YETI_HOP_A,
+  YETI_HOP_B,
   flagArt,
   pixelText,
   type Art,
@@ -59,6 +68,7 @@ import {
   type YetiRunSnapshot,
 } from './sim';
 import type { TrackSeg } from './engine';
+import type { LivePop, PopTone } from './pops';
 
 export const SCALE = 3; // screen px per art px
 export const YETI_SCALE = 4; // the yeti is bigger than everything else on the hill
@@ -203,6 +213,60 @@ function drawTracks(c: SkCanvas, segs: readonly TrackSeg[]) {
   }
 }
 
+// ── The catch ───────────────────────────────────────────────────────────────
+
+// As in SkiFree, the yeti eats the skier: holds them up, gulps them down,
+// chews, then hops about. Milliseconds since the catch.
+export const EAT_GRAB_MS = 500;
+export const EAT_GULP_MS = 850;
+const EAT_CHEW_MS = 2050;
+const EAT_HOP_MS = 2750;
+/** How long the catch plays before the end-of-run panel. */
+export const CATCH_BEAT_MS = 2950;
+
+function yetiEatFrame(ms: number): Art {
+  if (ms < EAT_GRAB_MS) return YETI_GRAB;
+  if (ms < EAT_GULP_MS) return YETI_GULP;
+  if (ms < EAT_CHEW_MS) return Math.floor((ms - EAT_GULP_MS) / 150) % 2 === 0 ? YETI_CHEW_A : YETI_CHEW_B;
+  if (ms < EAT_HOP_MS) return Math.floor((ms - EAT_CHEW_MS) / 175) % 2 === 0 ? YETI_HOP_A : YETI_HOP_B;
+  return YETI_HOP_B;
+}
+
+const YETI_HANDS = 21 * YETI_SCALE; // raised hands, px above the yeti's feet
+const YETI_MOUTH = 18 * YETI_SCALE; // its mouth, px above its feet
+
+function drawYeti(c: SkCanvas, snap: YetiRunSnapshot, eatMs: number | null) {
+  if (eatMs === null) {
+    const art = Math.floor(snap.t * 6) % 2 ? YETI_A : YETI_B;
+    stamp(c, art, snap.yetiX, snap.yetiY, YETI_SCALE);
+    return;
+  }
+  const art = yetiEatFrame(eatMs);
+  const hop = art === YETI_HOP_A ? 3 * YETI_SCALE : 0;
+  stamp(c, art, snap.yetiX, snap.yetiY - hop, YETI_SCALE);
+}
+
+/** Caught: the skier rides on the yeti's raised hands, then goes into its mouth. */
+function drawCaughtSkier(c: SkCanvas, snap: YetiRunSnapshot, eatMs: number) {
+  if (eatMs >= EAT_GULP_MS) return; // inside the yeti now
+  const gulpP = Math.min(1, Math.max(0, (eatMs - EAT_GRAB_MS) / (EAT_GULP_MS - EAT_GRAB_MS)));
+  const mid = -SKIER_H / 2;
+  // Feet on the hands (bobbing while held up), sliding down so the body's
+  // middle ends at the mouth.
+  const held = YETI_HANDS + (gulpP === 0 ? 3 - 3 * Math.cos((eatMs / 500) * 2 * Math.PI) : 0);
+  const lift = held + (YETI_MOUTH + mid - held) * gulpP;
+  c.save();
+  c.translate(Math.round(snap.x), Math.round(snap.y - lift));
+  if (gulpP > 0) {
+    c.translate(0, mid);
+    c.rotate(gulpP * 200, 0, 0);
+    c.scale(1 - 0.9 * gulpP, 1 - 0.9 * gulpP);
+    c.translate(0, -mid);
+  }
+  stamp(c, SKIER_ART, 0, 0);
+  c.restore();
+}
+
 // ── The skier ───────────────────────────────────────────────────────────────
 
 export const SKIER_H = SKIER_ART.h * SCALE;
@@ -271,15 +335,71 @@ function drawSkier(c: SkCanvas, snap: YetiRunSnapshot) {
   c.restore();
 }
 
+// ── Falling snow ────────────────────────────────────────────────────────────
+
+// Two sparse flake tiles at different sizes, scrolled faster than the ground
+// (k) and drifting down on their own (drift px/s), so they read as near the
+// camera. Flakes are [x, y, size].
+const SNOW_LAYERS = [
+  { size: 149, k: 1.15, drift: 22, flakes: [[10, 60, 2], [90, 20, 2], [60, 110, 1], [130, 90, 2], [40, 140, 1], [110, 130, 1]] },
+  { size: 211, k: 1.4, drift: 38, flakes: [[20, 30, 3], [120, 80, 3], [70, 170, 3], [180, 140, 2], [160, 20, 2]] },
+] as const;
+
+function drawSnowfall(c: SkCanvas, w: number, h: number, camX: number, camY: number, t: number) {
+  const flake = fill('#ffffff', 0.85);
+  for (const { size, k, drift, flakes } of SNOW_LAYERS) {
+    const ox = mod(camX * k + t * drift * 0.4, size);
+    const oy = mod(camY * k + t * drift, size);
+    for (let tx = ox - size; tx < w; tx += size) {
+      for (let ty = oy - size; ty < h; ty += size) {
+        for (const [x, y, d] of flakes) c.drawRect(r(Math.round(tx + x), Math.round(ty + y), d, d), flake);
+      }
+    }
+  }
+}
+
+// ── Score pop-ups ───────────────────────────────────────────────────────────
+
+const POP_COLOR: Record<PopTone, string> = { gate: GATE_GOLD, style: SNOW_HI, bad: '#ffd2d3' };
+const POP_SCALE = 3;
+const POP_IN = 0.32; // fraction of its life a pop spends rising into place
+
+function drawPop(c: SkCanvas, p: LivePop, x: number, y: number) {
+  const inP = Math.min(1, p.age / POP_IN);
+  const ease = 1 - (1 - inP) * (1 - inP);
+  const py = y + 6 + (-22 - p.slot * 14) * ease;
+  const fadeOut = p.age > 0.75 ? 1 - (p.age - 0.75) / 0.25 : 1;
+  const opacity = Math.max(0, Math.min(inP * 2, fadeOut, 1));
+  if (opacity <= 0) return;
+  const text = pixelText(p.text, POP_COLOR[p.tone]);
+  const outline = pixelText(p.text, NAVY);
+  c.saveLayer(fill('#000000', opacity));
+  // A 1px navy outline, so the text reads on white snow
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    stamp(c, outline, x + dx, py + dy, POP_SCALE);
+  }
+  stamp(c, text, x, py, POP_SCALE);
+  c.restore();
+}
+
 // ── A whole frame ───────────────────────────────────────────────────────────
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
+
+export type FrameExtras = {
+  tracks?: readonly TrackSeg[];
+  pops?: readonly LivePop[];
+  /** Milliseconds since the yeti caught the skier (the eating animation). */
+  eatMs?: number | null;
+  /** Seconds for the snowfall's drift; null turns the snowfall off (reduced motion). */
+  snowT?: number | null;
+};
 
 export function renderFrame(
   snap: YetiRunSnapshot,
   w: number,
   h: number,
-  tracks: readonly TrackSeg[] = [],
+  { tracks = [], pops = [], eatMs = null, snowT = snap.t }: FrameExtras = {},
 ): SkPicture {
   return createPicture((c) => {
     c.drawColor(Skia.Color(SNOW));
@@ -311,15 +431,28 @@ export function renderFrame(
       const flat = o.kind === 'mogul' || o.kind === 'ramp';
       layers.push({ z: o.y - (flat ? 40 : 0), draw: () => drawObstacle(c, o) });
     }
-    const skierZ = snap.z > 0 ? Infinity : snap.y + (snap.crashT > 0 ? 30 : 1);
-    layers.push({ z: skierZ, draw: () => drawSkier(c, snap) });
-    if (snap.yeti === 'chase' || snap.yeti === 'caught') {
-      const art = snap.yeti === 'caught' ? YETI_GRAB : Math.floor(snap.t * 6) % 2 ? YETI_A : YETI_B;
-      layers.push({ z: snap.yetiY, draw: () => stamp(c, art, snap.yetiX, snap.yetiY, YETI_SCALE) });
+    const caught = snap.yeti === 'caught';
+    const eat = caught ? (eatMs ?? 0) : null;
+    if (eat !== null) {
+      // Held up in front of the yeti
+      layers.push({ z: snap.yetiY + 1, draw: () => drawCaughtSkier(c, snap, eat) });
+    } else {
+      const skierZ = snap.z > 0 ? Infinity : snap.y + (snap.crashT > 0 ? 30 : 1);
+      layers.push({ z: skierZ, draw: () => drawSkier(c, snap) });
+    }
+    if (snap.yeti === 'chase' || caught) {
+      layers.push({ z: snap.yetiY, draw: () => drawYeti(c, snap, eat) });
     }
     layers.sort((a, b) => a.z - b.z);
     for (const l of layers) l.draw();
 
     c.restore();
+
+    // Screen space: snow nearer the camera than the hill, then the pop-ups
+    // floating over the skier's head.
+    if (snowT !== null) drawSnowfall(c, w, h, camX, camY, snowT);
+    const headX = w * SKIER_SCREEN_X;
+    const headY = h * SKIER_SCREEN_Y - SKIER_H - 18 - snap.z;
+    for (const p of pops) drawPop(c, p, headX, headY);
   }, r(0, 0, w, h));
 }
