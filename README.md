@@ -48,11 +48,9 @@ splits and the gotchas around loading Skia on web.
 
 ## History
 
-This started as a way to learn the Expo ecosystem by porting Yeti Run, a
-minigame from my earlier web project Runagotchu (`rungotchu` in the code
-history), to a native-first app. The git history follows the port milestone by
-milestone: scaffold, sim and tests, Skia canvas, game loop, touch and keyboard
-controls, polish, web hosting and the title screen. It was built with
+I built Yeti Run to learn the Expo ecosystem. The git history follows the
+build milestone by milestone: scaffold, sim and tests, Skia canvas, game loop,
+touch and keyboard controls, polish, web hosting and the title screen. It was built with
 [Claude Code](https://claude.com/claude-code). The `CLAUDE.md` file and the
 project skills in `.claude/skills/` are part of that workflow.
 
