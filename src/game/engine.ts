@@ -12,6 +12,7 @@ import {
   pressAction,
   pressTrick,
   setAim,
+  setSteer,
   setTuck,
   snapshotOf,
   step,
@@ -67,12 +68,18 @@ export class RunEngine {
     return !this.sim.over;
   }
 
-  // ── Player input (touch controls call these; a run that's over ignores them)
+  // ── Player input (touch and keyboard controls call these; a run that's over ignores them)
 
   /** Swing toward heading index `idx`; null lets go and keeps the heading. */
   aim(idx: number | null, sidestep = false): void {
     if (this.over && idx !== null) return;
     setAim(this.sim, idx, sidestep);
+  }
+
+  /** A held left/right key: turn once now, then repeat while held (0 = let go). */
+  steer(dir: -1 | 0 | 1): void {
+    if (this.over && dir !== 0) return;
+    setSteer(this.sim, dir);
   }
 
   tuck(on: boolean): void {

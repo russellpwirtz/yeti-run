@@ -14,6 +14,9 @@
 // Touches arrive through a gesture-handler Pan gesture. With runOnJS(true) its
 // callbacks run on the JS thread — the same thread as the engine — so they can
 // call straight into TouchSteering with no thread hop.
+//
+// Keys (web only — see keyboard-listener.web.ts) go to a KeyboardSteering per
+// run. Enter on the end-of-run panel skis again.
 
 import { createPicture, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +25,8 @@ import { Gesture, type PanGesture } from 'react-native-gesture-handler';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 import { RunEngine } from './engine';
+import { listenToKeys } from './keyboard-listener';
+import { KeyboardSteering } from './keys';
 import { renderFrame, SKIER_H, SKIER_SCREEN_X, SKIER_SCREEN_Y, viewFor } from './render';
 import type { YetiRunSnapshot } from './sim';
 import { TouchSteering } from './touch';
@@ -115,6 +120,19 @@ export function useRunLoop(width: number, height: number): RunLoop {
     }));
     touch.bind(controls);
 
+    const keyboard = new KeyboardSteering(engine);
+    const stopKeys = listenToKeys({
+      down: (key, repeat) => {
+        if (!engine.over) return keyboard.down(key, repeat);
+        if (key !== 'Enter' || repeat) return false;
+        setHud(EMPTY_HUD);
+        setSeed(newSeed());
+        return true;
+      },
+      up: (key) => void keyboard.up(key),
+      blur: () => keyboard.releaseAll(),
+    });
+
     let raf = 0;
     let last = nowS();
     let lastHud = -Infinity;
@@ -142,7 +160,7 @@ export function useRunLoop(width: number, height: number): RunLoop {
     };
 
     // Pause while the app is in the background; resync the clock on return so
-    // the time away isn't simulated. A finger held as the app left is let go.
+    // the time away isn't simulated. A finger or key held as the app left is let go.
     const sub = AppState.addEventListener('change', (state) => {
       const nowActive = state !== 'background';
       if (nowActive === active || engine.over) return;
@@ -153,6 +171,7 @@ export function useRunLoop(width: number, height: number): RunLoop {
         raf = requestAnimationFrame(tick);
       } else {
         controls.up(false);
+        keyboard.releaseAll();
       }
     });
 
@@ -160,6 +179,7 @@ export function useRunLoop(width: number, height: number): RunLoop {
     return () => {
       cancelAnimationFrame(raf);
       sub.remove();
+      stopKeys();
       touch.bind(null);
     };
   }, [seed, picture, touch]);

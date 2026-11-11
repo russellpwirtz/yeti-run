@@ -6,7 +6,8 @@
 // sim-check.ts.
 
 import { RunEngine } from "../src/game/engine";
-import { DOWNHILL, HEADING_DEG, STEP_S, TRICK_BACKFLIP, TRICK_SPIN_R } from "../src/game/sim";
+import { DOWNHILL, HEADING_DEG, STEP_S, TRICK_BACKFLIP, TRICK_DAFFY, TRICK_SPIN_L, TRICK_SPIN_R } from "../src/game/sim";
+import { KeyboardSteering, type KeyInput } from "../src/game/keys";
 import { HOLD_S, TouchSteering, TUCK_DRAG_PX, type GameInput } from "../src/game/touch";
 
 let fails = 0;
@@ -137,6 +138,90 @@ console.log("against a real run");
   hop.up(true);
   h.advance(STEP_S);
   ok("a tap at the top hops", h.sim.z > 0 || h.sim.vz > 0);
+}
+
+console.log("keyboard");
+function fakeKeys(inAir = false) {
+  const log = { steers: [] as number[], tucks: [] as boolean[], actions: 0, tricks: [] as number[] };
+  const input: KeyInput = {
+    aim: () => {},
+    steer: (dir) => void log.steers.push(dir),
+    tuck: (on) => void log.tucks.push(on),
+    action: () => void log.actions++,
+    trick: (kind) => (inAir ? (log.tricks.push(kind), true) : false),
+  };
+  return { log, keys: new KeyboardSteering(input) };
+}
+{
+  const { log, keys } = fakeKeys();
+  ok("← steers left", keys.down("ArrowLeft") && log.steers.at(-1) === -1);
+  ok("OS auto-repeat is swallowed, not re-sent", keys.down("ArrowLeft", true) && log.steers.length === 1);
+  keys.down("ArrowRight");
+  ok("← and → together cancel out", log.steers.at(-1) === 0);
+  keys.up("ArrowLeft");
+  ok("…let go of ←, and → steers right", log.steers.at(-1) === 1);
+  keys.up("ArrowRight");
+  ok("let go of both: stop turning", log.steers.at(-1) === 0);
+  keys.down("D");
+  ok("WASD works with Shift / Caps Lock on", log.steers.at(-1) === 1);
+  keys.up("d");
+}
+{
+  const { log, keys } = fakeKeys();
+  keys.down("ArrowDown");
+  ok("↓ held tucks", log.tucks.at(-1) === true);
+  keys.up("ArrowDown");
+  ok("…and letting go stops", log.tucks.at(-1) === false);
+  keys.down(" ");
+  keys.down("ArrowUp");
+  ok("space and ↑ hop", log.actions === 2);
+  ok("other keys aren't game keys", !keys.down("q") && !keys.down("Tab") && !keys.up("Enter"));
+}
+{
+  const { log, keys } = fakeKeys();
+  keys.down("a");
+  keys.down("s");
+  keys.releaseAll();
+  ok("losing focus lets go of turn and tuck", log.steers.at(-1) === 0 && log.tucks.at(-1) === false);
+  const n = log.tucks.length;
+  keys.releaseAll();
+  ok("…and doesn't release a tuck it isn't holding (a finger's)", log.tucks.length === n);
+}
+{
+  const { log, keys } = fakeKeys(true);
+  keys.down("ArrowLeft");
+  keys.down("ArrowRight");
+  keys.down("w");
+  keys.down("ArrowDown");
+  ok("in ramp air the arrows are tricks", JSON.stringify(log.tricks) === JSON.stringify([TRICK_SPIN_L, TRICK_SPIN_R, TRICK_DAFFY, TRICK_BACKFLIP]));
+  ok("…not turns or a tuck", log.steers.length === 0 && log.tucks.length === 0);
+  keys.down(" ");
+  ok("space is still the action (the sim makes it a Daffy)", log.actions === 1 && log.tricks.length === 4);
+}
+{
+  const e = new RunEngine(4242);
+  const keys = new KeyboardSteering(e);
+  const run = (secs: number) => {
+    for (let k = 0; k < Math.round(secs / STEP_S); k++) e.advance(STEP_S);
+  };
+  // The skier starts side-on facing right (heading 6): a turn on the press,
+  // then repeats at 0.2s, 0.32s, 0.44s → heading 2, one left of downhill.
+  keys.down("ArrowLeft");
+  run(0.5);
+  ok("a short hold of ← swings round to downhill-left", e.sim.heading === DOWNHILL - 1, `heading ${e.sim.heading}`);
+  keys.up("ArrowLeft");
+  const h = new RunEngine(1);
+  const held = new KeyboardSteering(h);
+  held.down("ArrowLeft");
+  for (let k = 0; k < Math.round(1.5 / STEP_S); k++) h.advance(STEP_S);
+  ok("a long hold keeps turning, round to side-on left", h.sim.heading === 0, `heading ${h.sim.heading}`);
+  keys.up("ArrowLeft");
+  run(2);
+  ok("…and the skier sets off down and left", e.sim.y > 50 && e.sim.x < -5, `x ${e.sim.x.toFixed(0)} y ${e.sim.y.toFixed(0)}`);
+  keys.down("ArrowDown");
+  run(0.1);
+  ok("↓ points straight downhill", e.sim.heading === DOWNHILL);
+  keys.up("ArrowDown");
 }
 
 console.log(fails === 0 ? "\nall controls checks passed" : `\n${fails} check(s) FAILED`);

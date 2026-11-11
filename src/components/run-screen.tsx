@@ -2,7 +2,7 @@ import { Button, Column, Host, Row, Spacer, Text } from '@expo/ui';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -74,6 +74,9 @@ export default function RunScreen() {
               <Text textStyle={{ color: FROST, fontSize: 15 }}>
                 {`${Math.floor(hud.distM)} m · ${hud.gatesPassed} gates · score ${hud.score}`}
               </Text>
+              {Platform.OS === 'web' && (
+                <Text textStyle={{ color: FROST, fontSize: 13 }}>Press Enter to ski again</Text>
+              )}
               <Row spacing={8}>
                 <Button label="Ski again" onPress={restart} />
                 <Spacer flexible />
@@ -91,6 +94,10 @@ const HOW_TO_PLAY = [
   'Hold where you want to go, and drag to steer',
   'Tap to hop rocks · drag far straight down to tuck',
   'Off a ramp, swipe ← → ↑ ↓ for tricks',
+  // Keyboard controls are wired up on web only (game/keyboard-listener.web.ts).
+  ...(Platform.OS === 'web'
+    ? ['Keys: ← → turn · hold ↓ to tuck · space hops · arrows do tricks in the air']
+    : []),
 ];
 
 function YetiWarning({ hud }: { hud: Hud }) {
